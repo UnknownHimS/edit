@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HD Media Editor - Instagram & Facebook</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #a0a0a0;
+            margin-bottom: 30px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel h3 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            font-size: 1.1rem;
+            padding: 15px;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(56, 239, 125, 0.4);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #34495e;
+            color: white;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        input[type="color"] {
+            height: 45px;
+            cursor: pointer;
+        }
+
+        input[type="range"] {
+            cursor: pointer;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #a0a0a0;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 600px;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 70vh;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            cursor: move;
+        }
+
+        .text-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .text-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .text-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .text-item.selected {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .video-controls {
+            margin-top: 20px;
+        }
+
+        video {
+            width: 100%;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        .color-input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .color-input-group input[type="text"] {
+            width: 100px;
+        }
+
+        .style-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .style-buttons button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s;
+        }
+
+        .style-buttons button.active {
+            background: #667eea;
+        }
+
+        .info-text {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 1024px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 HD Media Editor</h1>
+        <p class="subtitle">Create stunning HD content for Instagram & Facebook</p>
+
+        <div class="layout">
+            <!-- Left Panel - Controls -->
+            <div>
+                <!-- Upload Section -->
+                <div class="panel control-group">
+                    <h3>📤 Upload Media</h3>
+                    <input type="file" id="fileInput" accept="image/*,video/*" style="display: none;">
+                    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                        Choose Image/Video
+                    </button>
+                </div>
+
+                <!-- Aspect Ratio -->
+                <div class="panel control-group">
+                    <h3>📐 Format</h3>
+                    <select id="aspectRatio">
+                        <option value="1:1">Instagram Square (1080x1080)</option>
+                        <option value="4:5">Instagram Portrait (1080x1350)</option>
+                        <option value="9:16">Instagram Story/Reels (1080x1920)</option>
+                        <option value="16:9">Facebook Landscape (1920x1080)</option>
+                    </select>
+                </div>
+
+                <!-- Background Color -->
+                <div class="panel control-group">
+                    <h3>🎨 Background</h3>
+                    <div class="color-input-group">
+                        <input type="color" id="bgColor" value="#1a1a2e">
+                        <input type="text" id="bgColorText" value="#1a1a2e">
+                    </div>
+                </div>
+
+                <!-- Transform Controls -->
+                <div class="panel control-group" id="transformPanel" style="display: none;">
+                    <h3>🔄 Transform</h3>
+                    <label>Zoom: <span id="zoomValue">1.0</span>x</label>
+                    <input type="range" id="zoom" min="0.1" max="3" step="0.1" value="1">
+                    
+                    <label style="margin-top: 15px;">Rotation: <span id="rotationValue">0</span>°</label>
+                    <input type="range" id="rotation" min="0" max="360" step="15" value="0">
+                </div>
+
+                <!-- Text Controls -->
+                <div class="panel control-group">
+                    <h3>✏️ Text</h3>
+                    <button class="btn btn-secondary" onclick="addText()">+ Add Text</button>
+                    
+                    <div class="text-list" id="textList"></div>
+
+                    <div id="textEditor" style="display: none; margin-top: 15px;">
+                        <label>Text Content</label>
+                        <textarea id="textContent" rows="2"></textarea>
+                        
+                        <div class="grid-2" style="margin-top: 10px;">
+                            <div>
+                                <label>Font Size</label>
+                                <input type="number" id="fontSize" value="48" min="12" max="200">
+                            </div>
+                            <div>
+                                <label>Color</label>
+                                <input type="color" id="textColor" value="#ffffff">
+                            </div>
+                        </div>
+
+                        <label style="margin-top: 10px;">Font Family</label>
+                        <select id="fontFamily">
+                            <option value="Arial">Arial</option>
+                            <option value="Helvetica">Helvetica</option>
+                            <option value="'Times New Roman'">Times New Roman</option>
+                            <option value="Georgia">Georgia</option>
+                            <option value="'Courier New'">Courier New</option>
+                            <option value="Impact">Impact</option>
+                            <option value="Verdana">Verdana</option>
+                        </select>
+
+                        <div class="style-buttons" style="margin-top: 10px;">
+                            <button id="boldBtn" onclick="toggleBold()">Bold</button>
+                            <button id="italicBtn" onclick="toggleItalic()">Italic</button>
+                        </div>
+
+                        <button class="btn btn-danger" onclick="deleteSelectedText()" style="margin-top: 15px;">
+                            🗑️ Delete Text
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Export Button -->
+                <button class="btn btn-success" onclick="exportMedia()">
+                    ⬇️ Export HD Image
+                </button>
+            </div>
+
+            <!-- Right Panel - Canvas -->
+            <div class="panel">
+                <h3>👁️ Preview</h3>
+                <div class="canvas-container">
+                    <canvas id="canvas"></canvas>
+                </div>
+                <div id="videoControlsDiv" style="display: none;">
+                    <video id="videoElement" controls></video>
+                    <p class="info-text">Use video controls to select frame. Export captures current frame as HD image.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        let state = {
+            media: null,
+            mediaType: null,
+            textElements: [],
+            selectedTextId: null,
+            bgColor: '#1a1a2e',
+            aspectRatio: '1:1',
+            zoom: 1,
+            rotation: 0,
+            position: { x: 0, y: 0 },
+            isDragging: false,
+            draggedTextId: null
+        };
+
+        const aspectRatios = {
+            '1:1': { width: 1080, height: 1080 },
+            '4:5': { width: 1080, height: 1350 },
+            '9:16': { width: 1080, height: 1920 },
+            '16:9': { width: 1920, height: 1080 }
+        };
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const videoElement = document.getElementById('videoElement');
+
+        // Initialize
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+        document.getElementById('aspectRatio').addEventListener('change', (e) => {
+            state.aspectRatio = e.target.value;
+            drawCanvas();
+        });
+        document.getElementById('bgColor').addEventListener('input', (e) => {
+            state.bgColor = e.target.value;
+            document.getElementById('bgColorText').value = e.target.value;
+            drawCanvas();
+        });
+        document.getElementById('bgColorText').addEventListener('input', (e) => {
+            state.bgColor = e.target.value;
+            document.getElementById('bgColor').value = e.target.value;
+            drawCanvas();
+        });
+        document.getElementById('zoom').addEventListener('input', (e) => {
+            state.zoom = parseFloat(e.target.value);
+            document.getElementById('zoomValue').textContent = state.zoom.toFixed(1);
+            drawCanvas();
+        });
+        document.getElementById('rotation').addEventListener('input', (e) => {
+            state.rotation = parseInt(e.target.value);
+            document.getElementById('rotationValue').textContent = state.rotation;
+            drawCanvas();
+        });
+
+        // Text editor events
+        document.getElementById('textContent').addEventListener('input', (e) => {
+            if (state.selectedTextId) {
+                const text = state.textElements.find(t => t.id === state.selectedTextId);
+                if (text) {
+                    text.content = e.target.value;
+                    drawCanvas();
+                }
+            }
+        });
+        document.getElementById('fontSize').addEventListener('input', (e) => {
+            if (state.selectedTextId) {
+                const text = state.textElements.find(t => t.id === state.selectedTextId);
+                if (text) {
+                    text.fontSize = parseInt(e.target.value);
+                    drawCanvas();
+                }
+            }
+        });
+        document.getElementById('textColor').addEventListener('input', (e) => {
+            if (state.selectedTextId) {
+                const text = state.textElements.find(t => t.id === state.selectedTextId);
+                if (text) {
+                    text.color = e.target.value;
+                    drawCanvas();
+                }
+            }
+        });
+        document.getElementById('fontFamily').addEventListener('change', (e) => {
+            if (state.selectedTextId) {
+                const text = state.textElements.find(t => t.id === state.selectedTextId);
+                if (text) {
+                    text.fontFamily = e.target.value;
+                    drawCanvas();
+                }
+            }
+        });
+
+        // Canvas events
+        canvas.addEventListener('click', handleCanvasClick);
+        canvas.addEventListener('mousedown', handleMouseDown);
+        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('mouseup', handleMouseUp);
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const url = URL.createObjectURL(file);
+            const type = file.type.startsWith('video') ? 'video' : 'image';
+            
+            state.mediaType = type;
+            state.media = url;
+            state.zoom = 1;
+            state.rotation = 0;
+            state.position = { x: 0, y: 0 };
+
+            document.getElementById('transformPanel').style.display = 'block';
+
+            if (type === 'video') {
+                videoElement.src = url;
+                document.getElementById('videoControlsDiv').style.display = 'block';
+                videoElement.addEventListener('loadeddata', drawCanvas);
+                videoElement.addEventListener('seeked', drawCanvas);
+            } else {
+                document.getElementById('videoControlsDiv').style.display = 'none';
+            }
+
+            drawCanvas();
+        }
+
+        function addText() {
+            const newText = {
+                id: Date.now(),
+                content: 'Double click to edit',
+                x: 100,
+                y: 100,
+                fontSize: 48,
+                color: '#ffffff',
+                fontFamily: 'Arial',
+                bold: false,
+                italic: false
+            };
+            state.textElements.push(newText);
+            updateTextList();
+            drawCanvas();
+        }
+
+        function updateTextList() {
+            const textList = document.getElementById('textList');
+            textList.innerHTML = '';
+            
+            state.textElements.forEach(text => {
+                const div = document.createElement('div');
+                div.className = 'text-item' + (state.selectedTextId === text.id ? ' selected' : '');
+                div.textContent = text.content;
+                div.onclick = () => selectText(text.id);
+                textList.appendChild(div);
+            });
+        }
+
+        function selectText(id) {
+            state.selectedTextId = id;
+            const text = state.textElements.find(t => t.id === id);
+            
+            if (text) {
+                document.getElementById('textEditor').style.display = 'block';
+                document.getElementById('textContent').value = text.content;
+                document.getElementById('fontSize').value = text.fontSize;
+                document.getElementById('textColor').value = text.color;
+                document.getElementById('fontFamily').value = text.fontFamily;
+                document.getElementById('boldBtn').className = text.bold ? 'active' : '';
+                document.getElementById('italicBtn').className = text.italic ? 'active' : '';
+            }
+            
+            updateTextList();
+        }
+
+        function toggleBold() {
+            if (state.selectedTextId) {
+                const text = state.textElements.find(t => t.id === state.selectedTextId);
+                if (text) {
+                    text.bold = !text.bold;
+                    document.getElementById('boldBtn').className = text.bold ? 'active' : '';
+                    drawCanvas();
+                }
+            }
+        }
+
+        function toggleItalic() {
+            if (state.selectedTextId) {
+                const text = state.textElements.find(t => t.id === state.selectedTextId);
+                if (text) {
+                    text.italic = !text.italic;
+                    document.getElementById('italicBtn').className = text.italic ? 'active' : '';
+                    drawCanvas();
+                }
+            }
+        }
+
+        function deleteSelectedText() {
+            if (state.selectedTextId) {
+                state.textElements = state.textElements.filter(t => t.id !== state.selectedTextId);
+                state.selectedTextId = null;
+                document.getElementById('textEditor').style.display = 'none';
+                updateTextList();
+                drawCanvas();
+            }
+        }
+
+        function drawCanvas() {
+            const dimensions = aspectRatios[state.aspectRatio];
+            canvas.width = dimensions.width;
+            canvas.height = dimensions.height;
+
+            ctx.fillStyle = state.bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (state.media) {
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate((state.rotation * Math.PI) / 180);
+                ctx.scale(state.zoom, state.zoom);
+
+                if (state.mediaType === 'image') {
+                    const img = new Image();
+                    img.onload = () => {
+                        const scale = Math.max(
+                            canvas.width / img.width,
+                            canvas.height / img.height
+                        );
+                        const scaledWidth = img.width * scale;
+                        const scaledHeight = img.height * scale;
+
+                        ctx.drawImage(
+                            img,
+                            -scaledWidth / 2 + state.position.x,
+                            -scaledHeight / 2 + state.position.y,
+                            scaledWidth,
+                            scaledHeight
+                        );
+                        ctx.restore();
+                        drawTexts();
+                    };
+                    img.src = state.media;
+                } else if (state.mediaType === 'video' && videoElement.readyState >= 2) {
+                    const scale = Math.max(
+                        canvas.width / videoElement.videoWidth,
+                        canvas.height / videoElement.videoHeight
+                    );
+                    const scaledWidth = videoElement.videoWidth * scale;
+                    const scaledHeight = videoElement.videoHeight * scale;
+
+                    ctx.drawImage(
+                        videoElement,
+                        -scaledWidth / 2 + state.position.x,
+                        -scaledHeight / 2 + state.position.y,
+                        scaledWidth,
+                        scaledHeight
+                    );
+                    ctx.restore();
+                    drawTexts();
+                }
+            } else {
+                drawTexts();
+            }
+        }
+
+        function drawTexts() {
+            state.textElements.forEach(text => {
+                ctx.font = `${text.italic ? 'italic' : ''} ${text.bold ? 'bold' : ''} ${text.fontSize}px ${text.fontFamily}`.trim();
+                ctx.fillStyle = text.color;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+
+                ctx.shadowColor = 'rgba(0,0,0,0.7)';
+                ctx.shadowBlur = 6;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+
+                ctx.fillText(text.content, text.x, text.y);
+
+                ctx.shadowColor = 'transparent';
+            });
+        }
+
+        function handleCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            for (let i = state.textElements.length - 1; i >= 0; i--) {
+                const text = state.textElements[i];
+                ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+                const metrics = ctx.measureText(text.content);
+
+                if (x >= text.x && x <= text.x + metrics.width &&
+                    y >= text.y && y <= text.y + text.fontSize) {
+                    selectText(text.id);
+                    return;
+                }
+            }
+            
+            state.selectedTextId = null;
+            document.getElementById('textEditor').style.display = 'none';
+            updateTextList();
+        }
+
+        function handleMouseDown(e) {
+            if (state.selectedTextId) {
+                state.isDragging = true;
+                state.draggedTextId = state.selectedTextId;
+            }
+        }
+
+        function handleMouseMove(e) {
+            if (state.isDragging && state.draggedTextId) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const x = (e.clientX - rect.left) * scaleX;
+                const y = (e.clientY - rect.top) * scaleY;
+
+                const text = state.textElements.find(t => t.id === state.draggedTextId);
+                if (text) {
+                    text.x = x;
+                    text.y = y;
+                    drawCanvas();
+                }
+            }
+        }
+
+        function handleMouseUp() {
+            state.isDragging = false;
+            state.draggedTextId = null;
+        }
+
+        function exportMedia() {
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `edited-${state.aspectRatio.replace(':', 'x')}-${Date.now()}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }, 'image/png', 1.0);
+        }
+
+        // Initial draw
+        drawCanvas();
+    </script>
+</body>
+</html>
