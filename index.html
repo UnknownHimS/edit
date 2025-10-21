@@ -367,359 +367,177 @@
     </div>
 
     <script>
-        // State management
-        let state = {
-            media: null,
-            mediaType: null,
-            textElements: [],
-            selectedTextId: null,
-            bgColor: '#1a1a2e',
-            aspectRatio: '1:1',
-            zoom: 1,
-            rotation: 0,
-            position: { x: 0, y: 0 },
-            isDragging: false,
-            draggedTextId: null,
-            audio: null,
-            audioVolume: 1
+       let state = {
+    media: null,
+    mediaType: null,
+    mediaLoaded: false,
+    textElements: [],
+    selectedTextId: null,
+    zoom: 1,
+    rotation: 0,
+    position: { x: 0, y: 0 },
+    dragOffset: { x: 0, y: 0 },
+    isDragging: false,
+    draggedTextId: null
+};
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+const aspectRatios = {
+    '1:1': { width: 1080, height: 1080 },
+    '4:5': { width: 1080, height: 1350 },
+    '9:16': { width: 1080, height: 1920 },
+    '16:9': { width: 1920, height: 1080 }
+};
+
+// Load Media
+function handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const url = URL.createObjectURL(file);
+    state.mediaType = file.type.startsWith('video') ? 'video' : 'image';
+    state.mediaLoaded = false;
+
+    if (state.mediaType === 'image') {
+        const img = new Image();
+        img.onload = () => {
+            state.media = img;
+            state.mediaLoaded = true;
+            drawCanvas();
         };
-
-        const aspectRatios = {
-            '1:1': { width: 1080, height: 1080 },
-            '4:5': { width: 1080, height: 1350 },
-            '9:16': { width: 1080, height: 1920 },
-            '16:9': { width: 1920, height: 1080 }
+        img.src = url;
+    } else {
+        const video = document.getElementById('videoElement');
+        video.src = url;
+        video.onloadeddata = () => {
+            state.media = video;
+            state.mediaLoaded = true;
+            drawCanvas();
         };
+    }
+}
 
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const videoElement = document.getElementById('videoElement');
-        const audioElement = document.getElementById('audioElement');
+// Draw Media
+function drawCanvas() {
+    const { width, height } = aspectRatios[document.getElementById('aspectRatio').value];
+    canvas.width = width;
+    canvas.height = height;
 
-        // Initialize
-        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
-        document.getElementById('audioInput').addEventListener('change', handleAudioUpload);
-        document.getElementById('aspectRatio').addEventListener('change', (e) => {
-            state.aspectRatio = e.target.value;
+    // Fill background
+    ctx.fillStyle = document.getElementById('bgColor').value;
+    ctx.fillRect(0, 0, width, height);
+
+    // Draw media
+    if (state.media && state.mediaLoaded) {
+        ctx.save();
+        ctx.translate(width / 2, height / 2);
+        ctx.rotate(state.rotation * Math.PI / 180);
+        ctx.scale(state.zoom, state.zoom);
+
+        const mw = state.media.videoWidth || state.media.width;
+        const mh = state.media.videoHeight || state.media.height;
+        const scale = Math.max(width / mw, height / mh);
+        const sw = mw * scale;
+        const sh = mh * scale;
+
+        ctx.drawImage(state.media, -sw / 2 + state.position.x, -sh / 2 + state.position.y, sw, sh);
+        ctx.restore();
+    }
+
+    drawTexts();
+}
+
+// Draw Texts
+function drawTexts() {
+    state.textElements.forEach(text => {
+        ctx.font = `${text.italic ? 'italic' : ''} ${text.bold ? 'bold' : ''} ${text.fontSize}px ${text.fontFamily}`;
+        ctx.fillStyle = text.color;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(text.content, text.x, text.y);
+
+        // Highlight selected
+        if (state.selectedTextId === text.id) {
+            const width = ctx.measureText(text.content).width;
+            ctx.strokeStyle = '#667eea';
+            ctx.strokeRect(text.x - 4, text.y - 4, width + 8, text.fontSize + 8);
+        }
+    });
+}
+
+// Add Text
+function addText() {
+    const text = {
+        id: Date.now(),
+        content: 'New Text',
+        x: 100,
+        y: 100,
+        fontSize: 48,
+        color: '#ffffff',
+        fontFamily: 'Arial',
+        bold: false,
+        italic: false
+    };
+    state.textElements.push(text);
+    state.selectedTextId = text.id;
+    drawCanvas();
+}
+
+// Select text on canvas click
+canvas.addEventListener('mousedown', e => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+    for (let i = state.textElements.length - 1; i >= 0; i--) {
+        const text = state.textElements[i];
+        ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+        const w = ctx.measureText(text.content).width;
+        const h = text.fontSize;
+
+        if (x >= text.x && x <= text.x + w && y >= text.y && y <= text.y + h) {
+            state.selectedTextId = text.id;
+            state.dragOffset = { x: x - text.x, y: y - text.y };
+            state.isDragging = true;
             drawCanvas();
-        });
-        document.getElementById('bgColor').addEventListener('input', (e) => {
-            state.bgColor = e.target.value;
-            document.getElementById('bgColorText').value = e.target.value;
-            drawCanvas();
-        });
-        document.getElementById('bgColorText').addEventListener('input', (e) => {
-            state.bgColor = e.target.value;
-            document.getElementById('bgColor').value = e.target.value;
-            drawCanvas();
-        });
-        document.getElementById('zoom').addEventListener('input', (e) => {
-            state.zoom = parseFloat(e.target.value);
-            document.getElementById('zoomValue').textContent = state.zoom.toFixed(1);
-            drawCanvas();
-        });
-        document.getElementById('rotation').addEventListener('input', (e) => {
-            state.rotation = parseInt(e.target.value);
-            document.getElementById('rotationValue').textContent = state.rotation;
-            drawCanvas();
-        });
-        document.getElementById('volume').addEventListener('input', (e) => {
-            state.audioVolume = parseInt(e.target.value) / 100;
-            document.getElementById('volumeValue').textContent = e.target.value;
-            if (audioElement) {
-                audioElement.volume = state.audioVolume;
-            }
-        });
-
-        // Text editor events
-        document.getElementById('textContent').addEventListener('input', (e) => {
-            if (state.selectedTextId) {
-                const text = state.textElements.find(t => t.id === state.selectedTextId);
-                if (text) {
-                    text.content = e.target.value;
-                    drawCanvas();
-                }
-            }
-        });
-        document.getElementById('fontSize').addEventListener('input', (e) => {
-            if (state.selectedTextId) {
-                const text = state.textElements.find(t => t.id === state.selectedTextId);
-                if (text) {
-                    text.fontSize = parseInt(e.target.value);
-                    drawCanvas();
-                }
-            }
-        });
-        document.getElementById('textColor').addEventListener('input', (e) => {
-            if (state.selectedTextId) {
-                const text = state.textElements.find(t => t.id === state.selectedTextId);
-                if (text) {
-                    text.color = e.target.value;
-                    drawCanvas();
-                }
-            }
-        });
-        document.getElementById('fontFamily').addEventListener('change', (e) => {
-            if (state.selectedTextId) {
-                const text = state.textElements.find(t => t.id === state.selectedTextId);
-                if (text) {
-                    text.fontFamily = e.target.value;
-                    drawCanvas();
-                }
-            }
-        });
-
-        // Canvas events
-        canvas.addEventListener('click', handleCanvasClick);
-        canvas.addEventListener('mousedown', handleMouseDown);
-        canvas.addEventListener('mousemove', handleMouseMove);
-        canvas.addEventListener('mouseup', handleMouseUp);
-
-        function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const url = URL.createObjectURL(file);
-            const type = file.type.startsWith('video') ? 'video' : 'image';
-            
-            state.mediaType = type;
-            state.media = url;
-            state.zoom = 1;
-            state.rotation = 0;
-            state.position = { x: 0, y: 0 };
-
-            document.getElementById('transformPanel').style.display = 'block';
-
-            if (type === 'video') {
-                videoElement.src = url;
-                document.getElementById('videoControlsDiv').style.display = 'block';
-                videoElement.addEventListener('loadeddata', drawCanvas);
-                videoElement.addEventListener('seeked', drawCanvas);
-            } else {
-                document.getElementById('videoControlsDiv').style.display = 'none';
-            }
-
-            drawCanvas();
+            return;
         }
+    }
 
-        function addText() {
-            const newText = {
-                id: Date.now(),
-                content: 'Double click to edit',
-                x: 100,
-                y: 100,
-                fontSize: 48,
-                color: '#ffffff',
-                fontFamily: 'Arial',
-                bold: false,
-                italic: false
-            };
-            state.textElements.push(newText);
-            updateTextList();
-            drawCanvas();
-        }
+    state.selectedTextId = null;
+    drawCanvas();
+});
 
-        function updateTextList() {
-            const textList = document.getElementById('textList');
-            textList.innerHTML = '';
-            
-            state.textElements.forEach(text => {
-                const div = document.createElement('div');
-                div.className = 'text-item' + (state.selectedTextId === text.id ? ' selected' : '');
-                div.textContent = text.content;
-                div.onclick = () => selectText(text.id);
-                textList.appendChild(div);
-            });
-        }
+canvas.addEventListener('mousemove', e => {
+    if (!state.isDragging) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-        function selectText(id) {
-            state.selectedTextId = id;
-            const text = state.textElements.find(t => t.id === id);
-            
-            if (text) {
-                document.getElementById('textEditor').style.display = 'block';
-                document.getElementById('textContent').value = text.content;
-                document.getElementById('fontSize').value = text.fontSize;
-                document.getElementById('textColor').value = text.color;
-                document.getElementById('fontFamily').value = text.fontFamily;
-                document.getElementById('boldBtn').className = text.bold ? 'active' : '';
-                document.getElementById('italicBtn').className = text.italic ? 'active' : '';
-            }
-            
-            updateTextList();
-        }
+    const text = state.textElements.find(t => t.id === state.selectedTextId);
+    if (text) {
+        text.x = x - state.dragOffset.x;
+        text.y = y - state.dragOffset.y;
+        drawCanvas();
+    }
+});
 
-        function toggleBold() {
-            if (state.selectedTextId) {
-                const text = state.textElements.find(t => t.id === state.selectedTextId);
-                if (text) {
-                    text.bold = !text.bold;
-                    document.getElementById('boldBtn').className = text.bold ? 'active' : '';
-                    drawCanvas();
-                }
-            }
-        }
+canvas.addEventListener('mouseup', () => {
+    state.isDragging = false;
+});
 
-        function toggleItalic() {
-            if (state.selectedTextId) {
-                const text = state.textElements.find(t => t.id === state.selectedTextId);
-                if (text) {
-                    text.italic = !text.italic;
-                    document.getElementById('italicBtn').className = text.italic ? 'active' : '';
-                    drawCanvas();
-                }
-            }
-        }
+// Export canvas
+function exportMedia() {
+    canvas.toBlob(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `media-${Date.now()}.png`;
+        a.click();
+    });
+}
 
-        function deleteSelectedText() {
-            if (state.selectedTextId) {
-                state.textElements = state.textElements.filter(t => t.id !== state.selectedTextId);
-                state.selectedTextId = null;
-                document.getElementById('textEditor').style.display = 'none';
-                updateTextList();
-                drawCanvas();
-            }
-        }
-
-        function drawCanvas() {
-            const dimensions = aspectRatios[state.aspectRatio];
-            canvas.width = dimensions.width;
-            canvas.height = dimensions.height;
-
-            ctx.fillStyle = state.bgColor;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            if (state.media) {
-                ctx.save();
-                ctx.translate(canvas.width / 2, canvas.height / 2);
-                ctx.rotate((state.rotation * Math.PI) / 180);
-                ctx.scale(state.zoom, state.zoom);
-
-                if (state.mediaType === 'image') {
-                    const img = new Image();
-                    img.onload = () => {
-                        const scale = Math.max(
-                            canvas.width / img.width,
-                            canvas.height / img.height
-                        );
-                        const scaledWidth = img.width * scale;
-                        const scaledHeight = img.height * scale;
-
-                        ctx.drawImage(
-                            img,
-                            -scaledWidth / 2 + state.position.x,
-                            -scaledHeight / 2 + state.position.y,
-                            scaledWidth,
-                            scaledHeight
-                        );
-                        ctx.restore();
-                        drawTexts();
-                    };
-                    img.src = state.media;
-                } else if (state.mediaType === 'video' && videoElement.readyState >= 2) {
-                    const scale = Math.max(
-                        canvas.width / videoElement.videoWidth,
-                        canvas.height / videoElement.videoHeight
-                    );
-                    const scaledWidth = videoElement.videoWidth * scale;
-                    const scaledHeight = videoElement.videoHeight * scale;
-
-                    ctx.drawImage(
-                        videoElement,
-                        -scaledWidth / 2 + state.position.x,
-                        -scaledHeight / 2 + state.position.y,
-                        scaledWidth,
-                        scaledHeight
-                    );
-                    ctx.restore();
-                    drawTexts();
-                }
-            } else {
-                drawTexts();
-            }
-        }
-
-        function drawTexts() {
-            state.textElements.forEach(text => {
-                ctx.font = `${text.italic ? 'italic' : ''} ${text.bold ? 'bold' : ''} ${text.fontSize}px ${text.fontFamily}`.trim();
-                ctx.fillStyle = text.color;
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'top';
-
-                ctx.shadowColor = 'rgba(0,0,0,0.7)';
-                ctx.shadowBlur = 6;
-                ctx.shadowOffsetX = 2;
-                ctx.shadowOffsetY = 2;
-
-                ctx.fillText(text.content, text.x, text.y);
-
-                ctx.shadowColor = 'transparent';
-            });
-        }
-
-        function handleCanvasClick(e) {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const x = (e.clientX - rect.left) * scaleX;
-            const y = (e.clientY - rect.top) * scaleY;
-
-            for (let i = state.textElements.length - 1; i >= 0; i--) {
-                const text = state.textElements[i];
-                ctx.font = `${text.fontSize}px ${text.fontFamily}`;
-                const metrics = ctx.measureText(text.content);
-
-                if (x >= text.x && x <= text.x + metrics.width &&
-                    y >= text.y && y <= text.y + text.fontSize) {
-                    selectText(text.id);
-                    return;
-                }
-            }
-            
-            state.selectedTextId = null;
-            document.getElementById('textEditor').style.display = 'none';
-            updateTextList();
-        }
-
-        function handleMouseDown(e) {
-            if (state.selectedTextId) {
-                state.isDragging = true;
-                state.draggedTextId = state.selectedTextId;
-            }
-        }
-
-        function handleMouseMove(e) {
-            if (state.isDragging && state.draggedTextId) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                const x = (e.clientX - rect.left) * scaleX;
-                const y = (e.clientY - rect.top) * scaleY;
-
-                const text = state.textElements.find(t => t.id === state.draggedTextId);
-                if (text) {
-                    text.x = x;
-                    text.y = y;
-                    drawCanvas();
-                }
-            }
-        }
-
-        function handleMouseUp() {
-            state.isDragging = false;
-            state.draggedTextId = null;
-        }
-
-        function exportMedia() {
-            canvas.toBlob((blob) => {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `edited-${state.aspectRatio.replace(':', 'x')}-${Date.now()}.png`;
-                a.click();
-                URL.revokeObjectURL(url);
-            }, 'image/png', 1.0);
-        }
 
         // Initial draw
         drawCanvas();
