@@ -328,6 +328,24 @@
                     </div>
                 </div>
 
+                <!-- Audio Controls -->
+                <div class="panel control-group">
+                    <h3>🎵 Background Music/Sound</h3>
+                    <input type="file" id="audioInput" accept="audio/*" style="display: none;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('audioInput').click()">
+                        Upload Audio
+                    </button>
+                    
+                    <div id="audioControls" style="display: none; margin-top: 15px;">
+                        <audio id="audioElement" controls style="width: 100%; border-radius: 8px;"></audio>
+                        <label style="margin-top: 10px;">Volume: <span id="volumeValue">100</span>%</label>
+                        <input type="range" id="volume" min="0" max="100" value="100">
+                        <button class="btn btn-danger" onclick="removeAudio()" style="margin-top: 10px;">
+                            🗑️ Remove Audio
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Export Button -->
                 <button class="btn btn-success" onclick="exportMedia()">
                     ⬇️ Export HD Image
@@ -361,7 +379,9 @@
             rotation: 0,
             position: { x: 0, y: 0 },
             isDragging: false,
-            draggedTextId: null
+            draggedTextId: null,
+            audio: null,
+            audioVolume: 1
         };
 
         const aspectRatios = {
@@ -374,9 +394,11 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const videoElement = document.getElementById('videoElement');
+        const audioElement = document.getElementById('audioElement');
 
         // Initialize
         document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+        document.getElementById('audioInput').addEventListener('change', handleAudioUpload);
         document.getElementById('aspectRatio').addEventListener('change', (e) => {
             state.aspectRatio = e.target.value;
             drawCanvas();
@@ -400,6 +422,13 @@
             state.rotation = parseInt(e.target.value);
             document.getElementById('rotationValue').textContent = state.rotation;
             drawCanvas();
+        });
+        document.getElementById('volume').addEventListener('input', (e) => {
+            state.audioVolume = parseInt(e.target.value) / 100;
+            document.getElementById('volumeValue').textContent = e.target.value;
+            if (audioElement) {
+                audioElement.volume = state.audioVolume;
+            }
         });
 
         // Text editor events
