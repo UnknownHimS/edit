@@ -366,7 +366,7 @@
         </div>
     </div>
 
- <script>
+<script>
 let state = {
     media: null,
     mediaType: null,
@@ -394,6 +394,7 @@ const aspectRatios = {
 // Initialize
 document.getElementById('fileInput').addEventListener('change', handleFileUpload);
 document.getElementById('audioInput').addEventListener('change', handleAudioUpload);
+document.getElementById('videoToAudioInput').addEventListener('change', handleVideoToAudio);
 document.getElementById('aspectRatio').addEventListener('change', drawCanvas);
 document.getElementById('bgColor').addEventListener('input', e => {
     document.getElementById('bgColorText').value = e.target.value;
@@ -507,6 +508,68 @@ function removeAudio() {
     audio.src = '';
     state.audio = null;
     document.getElementById('audioControls').style.display = 'none';
+}
+
+// Video to Audio Converter
+async function handleVideoToAudio(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const statusEl = document.getElementById('exportStatus');
+    statusEl.textContent = '🎵 Extracting audio from video...';
+    
+    try {
+        const videoEl = document.createElement('video');
+        videoEl.src = URL.createObjectURL(file);
+        
+        await new Promise(resolve => {
+            videoEl.onloadedmetadata = resolve;
+        });
+
+        // Create audio context to extract audio
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaElementSource(videoEl);
+        const dest = audioCtx.createMediaStreamDestination();
+        source.connect(dest);
+        source.connect(audioCtx.destination);
+
+        const mediaRecorder = new MediaRecorder(dest.stream);
+        const chunks = [];
+
+        mediaRecorder.ondataavailable = e => chunks.push(e.data);
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'audio/webm' });
+            const url = URL.createObjectURL(blob);
+            
+            // Set as background audio
+            const audio = document.getElementById('audioElement');
+            audio.src = url;
+            state.audio = blob;
+            document.getElementById('audioControls').style.display = 'block';
+            
+            // Download extracted audio
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `extracted-audio-${Date.now()}.webm`;
+            a.click();
+            
+            statusEl.textContent = '✅ Audio extracted successfully!';
+            setTimeout(() => statusEl.textContent = '', 3000);
+        };
+
+        mediaRecorder.start();
+        videoEl.play();
+        
+        setTimeout(() => {
+            videoEl.pause();
+            mediaRecorder.stop();
+        }, videoEl.duration * 1000);
+
+    } catch (err) {
+        console.error(err);
+        statusEl.textContent = '❌ Error extracting audio';
+        setTimeout(() => statusEl.textContent = '', 3000);
+    }
 }
 
 // Draw Canvas
@@ -672,8 +735,8 @@ canvas.addEventListener('mouseup', () => {
     state.isDragging = false;
 });
 
-// Export
-function exportMedia() {
+// Export Image
+function exportImage() {
     canvas.toBlob(blob => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -681,6 +744,102 @@ function exportMedia() {
         a.download = `media-${format}-${Date.now()}.png`;
         a.click();
     }, 'image/png', 1.0);
+}
+
+// Export Video with Audio
+async function exportVideo() {
+    const statusEl = document.getElementById('exportStatus');
+    
+    if (!state.media && !state.audio) {
+        statusEl.textContent = '❌ Please upload media or audio first';
+        setTimeout(() => statusEl.textContent = '', 3000);
+        return;
+    }
+
+    statusEl.textContent = '🎬 Creating video... Please wait...';
+    
+    try {
+        const { width, height } = aspectRatios[document.getElementById('aspectRatio').value];
+        const stream = canvas.captureStream(30); // 30 FPS
+        
+        // Add audio track if exists
+        if (state.audio) {
+            const audioEl = document.getElementById('audioElement');
+            const audioCtx = new AudioContext();
+            const source = audioCtx.createMediaElementSource(audioEl);
+            const dest = audioCtx.createMediaStreamDestination();
+            source.connect(dest);
+            source.connect(audioCtx.destination);
+            
+            const audioTrack = dest.stream.getAudioTracks()[0];
+            if (audioTrack) {
+                stream.addTrack(audioTrack);
+            }
+        }
+
+        const mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'video/webm;codecs=vp9',
+            videoBitsPerSecond: 8000000 // High quality
+        });
+
+        const chunks = [];
+        mediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const format = document.getElementById('aspectRatio').value.replace(':', 'x');
+            a.download = `video-${format}-${Date.now()}.webm`;
+            a.click();
+            
+            statusEl.textContent = '✅ Video exported successfully!';
+            setTimeout(() => statusEl.textContent = '', 3000);
+        };
+
+        // Record for duration
+        const duration = state.mediaType === 'video' && state.media ? 
+            (state.media.duration * 1000) : 5000; // 5 seconds for images
+
+        mediaRecorder.start();
+        
+        if (state.mediaType === 'video' && state.media) {
+            state.media.currentTime = 0;
+            state.media.play();
+        }
+
+        if (state.audio) {
+            const audioEl = document.getElementById('audioElement');
+            audioEl.currentTime = 0;
+            audioEl.play();
+        }
+
+        // Animate canvas during recording
+        const startTime = Date.now();
+        const animate = () => {
+            drawCanvas();
+            if (Date.now() - startTime < duration) {
+                requestAnimationFrame(animate);
+            } else {
+                mediaRecorder.stop();
+                if (state.media && state.mediaType === 'video') {
+                    state.media.pause();
+                }
+                if (state.audio) {
+                    document.getElementById('audioElement').pause();
+                }
+            }
+        };
+        animate();
+
+    } catch (err) {
+        console.error(err);
+        statusEl.textContent = '❌ Error creating video: ' + err.message;
+        setTimeout(() => statusEl.textContent = '', 5000);
+    }
 }
 
 // Initialize canvas
