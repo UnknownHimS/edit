@@ -366,8 +366,8 @@
         </div>
     </div>
 
-    <script>
-       let state = {
+ <script>
+let state = {
     media: null,
     mediaType: null,
     mediaLoaded: false,
@@ -378,7 +378,7 @@
     position: { x: 0, y: 0 },
     dragOffset: { x: 0, y: 0 },
     isDragging: false,
-    draggedTextId: null
+    audio: null
 };
 
 const canvas = document.getElementById('canvas');
@@ -390,6 +390,72 @@ const aspectRatios = {
     '9:16': { width: 1080, height: 1920 },
     '16:9': { width: 1920, height: 1080 }
 };
+
+// Initialize
+document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+document.getElementById('audioInput').addEventListener('change', handleAudioUpload);
+document.getElementById('aspectRatio').addEventListener('change', drawCanvas);
+document.getElementById('bgColor').addEventListener('input', e => {
+    document.getElementById('bgColorText').value = e.target.value;
+    drawCanvas();
+});
+document.getElementById('bgColorText').addEventListener('input', e => {
+    if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+        document.getElementById('bgColor').value = e.target.value;
+        drawCanvas();
+    }
+});
+
+document.getElementById('zoom').addEventListener('input', e => {
+    state.zoom = parseFloat(e.target.value);
+    document.getElementById('zoomValue').textContent = state.zoom.toFixed(1);
+    drawCanvas();
+});
+
+document.getElementById('rotation').addEventListener('input', e => {
+    state.rotation = parseInt(e.target.value);
+    document.getElementById('rotationValue').textContent = state.rotation;
+    drawCanvas();
+});
+
+document.getElementById('textContent').addEventListener('input', e => {
+    const text = state.textElements.find(t => t.id === state.selectedTextId);
+    if (text) {
+        text.content = e.target.value;
+        drawCanvas();
+        updateTextList();
+    }
+});
+
+document.getElementById('fontSize').addEventListener('input', e => {
+    const text = state.textElements.find(t => t.id === state.selectedTextId);
+    if (text) {
+        text.fontSize = parseInt(e.target.value);
+        drawCanvas();
+    }
+});
+
+document.getElementById('textColor').addEventListener('input', e => {
+    const text = state.textElements.find(t => t.id === state.selectedTextId);
+    if (text) {
+        text.color = e.target.value;
+        drawCanvas();
+    }
+});
+
+document.getElementById('fontFamily').addEventListener('change', e => {
+    const text = state.textElements.find(t => t.id === state.selectedTextId);
+    if (text) {
+        text.fontFamily = e.target.value;
+        drawCanvas();
+    }
+});
+
+document.getElementById('volume').addEventListener('input', e => {
+    const audio = document.getElementById('audioElement');
+    audio.volume = e.target.value / 100;
+    document.getElementById('volumeValue').textContent = e.target.value;
+});
 
 // Load Media
 function handleFileUpload(e) {
@@ -405,6 +471,8 @@ function handleFileUpload(e) {
         img.onload = () => {
             state.media = img;
             state.mediaLoaded = true;
+            document.getElementById('transformPanel').style.display = 'block';
+            document.getElementById('videoControlsDiv').style.display = 'none';
             drawCanvas();
         };
         img.src = url;
@@ -414,18 +482,40 @@ function handleFileUpload(e) {
         video.onloadeddata = () => {
             state.media = video;
             state.mediaLoaded = true;
+            document.getElementById('transformPanel').style.display = 'block';
+            document.getElementById('videoControlsDiv').style.display = 'block';
             drawCanvas();
         };
+        video.addEventListener('timeupdate', drawCanvas);
     }
 }
 
-// Draw Media
+// Audio Upload
+function handleAudioUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const url = URL.createObjectURL(file);
+    const audio = document.getElementById('audioElement');
+    audio.src = url;
+    state.audio = file;
+    document.getElementById('audioControls').style.display = 'block';
+}
+
+function removeAudio() {
+    const audio = document.getElementById('audioElement');
+    audio.src = '';
+    state.audio = null;
+    document.getElementById('audioControls').style.display = 'none';
+}
+
+// Draw Canvas
 function drawCanvas() {
     const { width, height } = aspectRatios[document.getElementById('aspectRatio').value];
     canvas.width = width;
     canvas.height = height;
 
-    // Fill background
+    // Background
     ctx.fillStyle = document.getElementById('bgColor').value;
     ctx.fillRect(0, 0, width, height);
 
@@ -458,16 +548,16 @@ function drawTexts() {
         ctx.textBaseline = 'top';
         ctx.fillText(text.content, text.x, text.y);
 
-        // Highlight selected
         if (state.selectedTextId === text.id) {
             const width = ctx.measureText(text.content).width;
             ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 3;
             ctx.strokeRect(text.x - 4, text.y - 4, width + 8, text.fontSize + 8);
         }
     });
 }
 
-// Add Text
+// Text Management
 function addText() {
     const text = {
         id: Date.now(),
@@ -481,11 +571,64 @@ function addText() {
         italic: false
     };
     state.textElements.push(text);
-    state.selectedTextId = text.id;
+    selectText(text.id);
+}
+
+function selectText(id) {
+    state.selectedTextId = id;
+    const text = state.textElements.find(t => t.id === id);
+    
+    if (text) {
+        document.getElementById('textEditor').style.display = 'block';
+        document.getElementById('textContent').value = text.content;
+        document.getElementById('fontSize').value = text.fontSize;
+        document.getElementById('textColor').value = text.color;
+        document.getElementById('fontFamily').value = text.fontFamily;
+        document.getElementById('boldBtn').classList.toggle('active', text.bold);
+        document.getElementById('italicBtn').classList.toggle('active', text.italic);
+    }
+    
+    updateTextList();
     drawCanvas();
 }
 
-// Select text on canvas click
+function updateTextList() {
+    const list = document.getElementById('textList');
+    list.innerHTML = state.textElements.map(text => 
+        `<div class="text-item ${state.selectedTextId === text.id ? 'selected' : ''}" 
+              onclick="selectText(${text.id})">
+            ${text.content.substring(0, 30)}${text.content.length > 30 ? '...' : ''}
+        </div>`
+    ).join('');
+}
+
+function toggleBold() {
+    const text = state.textElements.find(t => t.id === state.selectedTextId);
+    if (text) {
+        text.bold = !text.bold;
+        document.getElementById('boldBtn').classList.toggle('active', text.bold);
+        drawCanvas();
+    }
+}
+
+function toggleItalic() {
+    const text = state.textElements.find(t => t.id === state.selectedTextId);
+    if (text) {
+        text.italic = !text.italic;
+        document.getElementById('italicBtn').classList.toggle('active', text.italic);
+        drawCanvas();
+    }
+}
+
+function deleteSelectedText() {
+    state.textElements = state.textElements.filter(t => t.id !== state.selectedTextId);
+    state.selectedTextId = null;
+    document.getElementById('textEditor').style.display = 'none';
+    updateTextList();
+    drawCanvas();
+}
+
+// Canvas Interactions
 canvas.addEventListener('mousedown', e => {
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) * (canvas.width / rect.width);
@@ -498,15 +641,16 @@ canvas.addEventListener('mousedown', e => {
         const h = text.fontSize;
 
         if (x >= text.x && x <= text.x + w && y >= text.y && y <= text.y + h) {
-            state.selectedTextId = text.id;
+            selectText(text.id);
             state.dragOffset = { x: x - text.x, y: y - text.y };
             state.isDragging = true;
-            drawCanvas();
             return;
         }
     }
 
     state.selectedTextId = null;
+    document.getElementById('textEditor').style.display = 'none';
+    updateTextList();
     drawCanvas();
 });
 
@@ -528,18 +672,19 @@ canvas.addEventListener('mouseup', () => {
     state.isDragging = false;
 });
 
-// Export canvas
+// Export
 function exportMedia() {
     canvas.toBlob(blob => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `media-${Date.now()}.png`;
+        const format = document.getElementById('aspectRatio').value.replace(':', 'x');
+        a.download = `media-${format}-${Date.now()}.png`;
         a.click();
-    });
+    }, 'image/png', 1.0);
 }
 
-
-        
+// Initialize canvas
+drawCanvas();
     </script>
 </body>
 </html>
